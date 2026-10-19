@@ -1,0 +1,6 @@
+[profile.default]
+src = "../protocol/src"
+test = "test"
+libs = ["../protocol/lib", "lib"]
+remappings = ["src/=../protocol/src/"]
+allow_paths = ["../protocol"]

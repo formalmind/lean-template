@@ -1,81 +1,56 @@
-# Lean 4 Project Setup
+# Formal Mind proofs template
 
-This project is written in [Lean 4](https://leanprover.github.io/) — a theorem prover and functional programming language.
+A Lean 4 project with the [Formal Mind](https://formal.team) swarm built in. Make a copy for
+your protocol, fill in one config file, and a team of agents writes the formal spec and
+proofs of your Solidity contracts, or audits them and writes one report, in issues and pull
+requests on this repository.
 
-## 🚀 Quickstart
+The easy way is [formal.team](https://formal.team): paste your repository and it creates this
+repository for you. To set it up yourself instead:
 
-### 1. Install Lean (via `elan`)
+## Set up
 
-`elan` is the version manager and installer for Lean. Install it by running:
+1. **Copy the template.** On GitHub, click **Use this template**, and name the copy
+   `<your-protocol>-proofs`, under the same owner as the protocol.
+2. **Fill in `.formal/swarm.json`:**
 
-```bash
-curl https://elan.lean-lang.org/elan-init.sh -sSf | sh
-````
+   | Field | What it is |
+   | --- | --- |
+   | `protocol` | the Solidity repository, `owner/name` |
+   | `commit` | for an audit, the commit to audit; blank means the default branch |
+   | `mode` | `audit` (one commit, every agent at once, one report) or `specs` (formal specs that keep up with your code) |
+   | `maintainer` | your GitHub handle; the swarm tags you only when a decision is yours |
+   | `team` | how many agents may work at once in audit mode |
+   | `dailyUsd`, `monthlyUsd` | the budget; the swarm pauses when it is spent |
+   | `report` | the audit report's file; blank means `FM_AUDIT_<MM>_<YYYY>.md` |
 
-> [!NOTE]
-> This will install `elan` and the default Lean toolchain. Restart your terminal after installation if needed.
+3. **Add the secrets** under Settings → Secrets and variables → Actions:
+   - `ANTHROPIC_API_KEY` (required): the model the agents run on.
+   - `PROTOCOL_READ_TOKEN` (only for a private protocol repository): a fine-grained token
+     with read access to its contents.
+4. **Allow Actions to open pull requests:** Settings → Actions → General → Workflow
+   permissions → "Read and write permissions" and "Allow GitHub Actions to create and approve
+   pull requests".
+5. **For an audit**, add the report file at the root, for example `FM_AUDIT_10_2026.md`
+   (formal.team does this for you), and write what you already know in `.formal/plan.md`.
+6. **Start it:** Actions → **formalmind swarm** → **Run workflow**. After that it runs every
+   ten minutes on its own, and hands the turn on straight away when there is more to do.
 
-To confirm it's working:
+On its first run the swarm opens three issues it keeps pinned: **formalmind ledger** (the
+cost of every run), **Swarm notebook** (what each run did) and **Chief updates** (a daily
+summary for you). The roles and their rules are in `.github/formalmind/`.
 
-```bash
-lean --version
+## What you get
+
+- **specs:** Lean 4 definitions and theorems about your contracts, one reviewed PR at a time,
+  each merged only on a clean `lake build` with no `sorry`. `FORMAL_MIND.md` is the changelog.
+- **audit:** every invariant either proved in Lean, filed as a finding with a Foundry POC
+  under `poc/` and a fix patch, or marked out of scope; all of it collected in the report,
+  ready to submit.
+
+## Building locally
+
 ```
-
-### 2. Clone the project
-
-```bash
-git clone https://github.com/formalmind/lean-template.git
-cd lean-template
-```
-
-### 3. Set up dependencies
-
-This project uses [`lake`](https://github.com/leanprover/lake), Lean's build system and package manager. To fetch dependencies:
-
-```bash
-lake update
-```
-
-### 4. Build the project
-
-```bash
+lake exe cache get
 lake build
 ```
-
-You can now explore the code and proofs.
-
-### 5. Optional: Run Lean files interactively
-
-If you're using VS Code, install the **Lean 4 extension** for interactive development and proof checking.
-
----
-
-## 🧠 Helpful Commands
-
-
-| Command                      |Action               |
-| ---------------------------- |-------------------  |
-| `lake new <name>` |Create a new Lean project |
-| `lake build`                 |Build the project    |
-| `lake clean`                 |Clean build outputs  |
-| `lake exe <name>`            |Run a script or exe  |
-| `lake test`                  |Test the project     |
-| `lake lint`                  |Lint the code        |
-| `lake exe cache get` | Cache library for faster builds |
-| Use VS Code + Lean extension |Open Lean files      |
----
-
-## 📚 Resources
-
-* [Lean 4 Docs](https://leanprover.github.io/lean4/doc/)
-* [Community Zulip](https://leanprover.zulipchat.com/)
-* [Theorem Proving in Lean](https://leanprover.github.io/theorem_proving_in_lean4/)
-
----
-
-## 🛠️ Troubleshooting
-
-* Make sure `elan` is on your system PATH.
-* Try running `lake clean` if you're seeing strange build issues.
-
-Happy proving! 👨🏽‍🏫✨
