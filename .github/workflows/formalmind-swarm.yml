@@ -68,10 +68,12 @@ jobs:
         with:
           app-id: ${{ secrets.FORMALMIND_APP_ID }}
           private-key: ${{ secrets.FORMALMIND_APP_PRIVATE_KEY }}
-      # Without App secrets (the usual case), formal.team trades this run's OIDC token for a one-hour App token, so the
-      # repository keeps no secrets. Self-hosted without either, the workflow token is used.
+      # No secrets: formal.team trades this run's OIDC token for a one-hour App token and a model session for its metered
+      # proxy. With App secrets (self-hosting) those are used instead; with neither, the workflow token.
       - name: Token for this run
         id: token
+        env:
+          OWN_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
         run: |
           token="${{ steps.app.outputs.token }}"
           if [ -z "$token" ]; then
@@ -79,6 +81,13 @@ jobs:
             reply=$(curl -sS -X POST -H "Authorization: Bearer $oidc" https://formal.team/api/swarm/token || true)
             token=$(jq -r '.github_token // empty' <<<"$reply" 2>/dev/null || true)
             [ -n "$token" ] && echo "::add-mask::$token" || echo "formal.team: $(jq -r '.error // empty' <<<"$reply" 2>/dev/null)"
+            model=$(jq -r '.model_key // empty' <<<"$reply" 2>/dev/null || true)
+            # A repository with its own key talks to Anthropic directly; only keyless runs go through the proxy.
+            if [ -n "$model" ] && [ "$OWN_KEY" != true ]; then
+              echo "::add-mask::$model"
+              echo "model_key=$model" >> "$GITHUB_OUTPUT"
+              echo "ANTHROPIC_BASE_URL=$(jq -r .model_base_url <<<"$reply")" >> "$GITHUB_ENV"
+            fi
           fi
           echo "GH_TOKEN=${token:-${{ github.token }}}" >> "$GITHUB_ENV"
           echo "token=${token:-${{ github.token }}}" >> "$GITHUB_OUTPUT"
@@ -257,10 +266,12 @@ jobs:
         with:
           app-id: ${{ secrets.FORMALMIND_APP_ID }}
           private-key: ${{ secrets.FORMALMIND_APP_PRIVATE_KEY }}
-      # Without App secrets (the usual case), formal.team trades this run's OIDC token for a one-hour App token, so the
-      # repository keeps no secrets. Self-hosted without either, the workflow token is used.
+      # No secrets: formal.team trades this run's OIDC token for a one-hour App token and a model session for its metered
+      # proxy. With App secrets (self-hosting) those are used instead; with neither, the workflow token.
       - name: Token for this run
         id: token
+        env:
+          OWN_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
         run: |
           token="${{ steps.app.outputs.token }}"
           if [ -z "$token" ]; then
@@ -268,6 +279,13 @@ jobs:
             reply=$(curl -sS -X POST -H "Authorization: Bearer $oidc" https://formal.team/api/swarm/token || true)
             token=$(jq -r '.github_token // empty' <<<"$reply" 2>/dev/null || true)
             [ -n "$token" ] && echo "::add-mask::$token" || echo "formal.team: $(jq -r '.error // empty' <<<"$reply" 2>/dev/null)"
+            model=$(jq -r '.model_key // empty' <<<"$reply" 2>/dev/null || true)
+            # A repository with its own key talks to Anthropic directly; only keyless runs go through the proxy.
+            if [ -n "$model" ] && [ "$OWN_KEY" != true ]; then
+              echo "::add-mask::$model"
+              echo "model_key=$model" >> "$GITHUB_OUTPUT"
+              echo "ANTHROPIC_BASE_URL=$(jq -r .model_base_url <<<"$reply")" >> "$GITHUB_ENV"
+            fi
           fi
           echo "GH_TOKEN=${token:-${{ github.token }}}" >> "$GITHUB_ENV"
           echo "token=${token:-${{ github.token }}}" >> "$GITHUB_OUTPUT"
@@ -292,8 +310,6 @@ jobs:
             echo "swarm_mode=$(jq -r .mode <<<"$CFG")"; echo "maintainer=$(jq -r .maintainer <<<"$CFG")"
             echo "ledger=$(jq -r .ledger <<<"$CFG")"; echo "notebook=$(jq -r .notebook <<<"$CFG")"
             echo "chief=$(jq -r .chief <<<"$CFG")"; echo "report=$(jq -r .report <<<"$CFG")"
-            echo "fed_rule=$(jq -r '.anthropic.federationRuleId // ""' <<<"$CFG")"; echo "fed_org=$(jq -r '.anthropic.organizationId // ""' <<<"$CFG")"
-            echo "fed_account=$(jq -r '.anthropic.serviceAccountId // ""' <<<"$CFG")"; echo "fed_workspace=$(jq -r '.anthropic.workspaceId // ""' <<<"$CFG")"
           } >> "$GITHUB_OUTPUT"
       - name: Check out the protocol (read-only, under protocol/)
         if: ${{ env.ROLE != 'chief' }}
@@ -359,13 +375,8 @@ jobs:
         id: bot
         if: ${{ env.ROLE != 'merge' || env.MODE == 'answer' || steps.gate.outputs.clean == 'true' }}
         with:
-          # No key needed: the run authenticates with Anthropic's workload identity federation, using the rule in
-          # .formal/swarm.json ("anthropic"). An ANTHROPIC_API_KEY secret, when set, takes precedence.
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          anthropic_federation_rule_id: ${{ steps.ctx.outputs.fed_rule }}
-          anthropic_organization_id: ${{ steps.ctx.outputs.fed_org }}
-          anthropic_service_account_id: ${{ steps.ctx.outputs.fed_account }}
-          anthropic_workspace_id: ${{ steps.ctx.outputs.fed_workspace }}
+          # formal.team's model session (metered against your credits); self-hosted, your own ANTHROPIC_API_KEY.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY || steps.token.outputs.model_key }}
           github_token: ${{ steps.token.outputs.token }}
           include_fix_links: "false"
           prompt: |
@@ -414,10 +425,6 @@ jobs:
           printf '<!-- fm-cost role=%s ref=%s usd=%s run=%s mode=%s -->\n**%s** %s— $%s, %s ([run](%s))\n' \
             "$ROLE" "$ref" "$usd" "$GITHUB_RUN_ID" "${MODE:-work}" "$ROLE" "${ref:+$ref }" "$usd" "$OUTCOME" "$RUN_URL" > ledger.md
           gh issue comment "$LEDGER" --body-file ledger.md
-          # Charged to the project's Formal Mind credits (ignored for a repository formal.team doesn't know).
-          oidc=$(curl -sS -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://formal.team" | jq -r .value)
-          curl -sS -X POST -H "Authorization: Bearer $oidc" -H "Content-Type: application/json" \
-            -d "{\"usd\": $usd, \"job\": \"$ROLE${NUMBER:+#$NUMBER}\"}" https://formal.team/api/swarm/spend || true
 
   # Labels the workflow's own token sets don't start new runs, so hand the turn on directly.
   next:

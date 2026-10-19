@@ -24,15 +24,13 @@ repository for you. To set it up yourself instead:
    | `dailyUsd`, `monthlyUsd` | the budget; the swarm pauses when it is spent |
    | `report` | the audit report's file; blank means `FM_AUDIT_<MM>_<YYYY>.md` |
 
-3. **Add the secrets** under Settings → Secrets and variables → Actions:
-   - `ANTHROPIC_API_KEY` (required): the model the agents run on.
-   - `FORMALMIND_APP_ID` and `FORMALMIND_APP_PRIVATE_KEY` (optional): the swarm then acts as
-     formalmind[bot]. Needed where the organization doesn't let Actions open pull requests.
-   - `PROTOCOL_READ_TOKEN` (only for a private protocol repository): a fine-grained token
-     with read access to its contents.
-4. **Allow Actions to open pull requests:** Settings → Actions → General → Workflow
-   permissions → "Read and write permissions" and "Allow GitHub Actions to create and approve
-   pull requests".
+3. **No secrets.** Install the [formalmind GitHub App](https://github.com/apps/formalmind) on the
+   owner and set the project up at formal.team. Each run proves who it is with GitHub's OIDC
+   token and gets a one-hour App token and a model session from formal.team; model calls go
+   through formal.team's proxy, which charges your Formal Mind credits and stops at your
+   daily budget.
+4. **Self-hosting instead?** Add your own `ANTHROPIC_API_KEY` (and `PROTOCOL_READ_TOKEN` for a
+   private protocol) as Actions secrets; the runs then call Anthropic directly.
 5. **For an audit**, add the report file at the root, for example `FM_AUDIT_10_2026.md`
    (formal.team does this for you), and write what you already know in `.formal/plan.md`.
 6. **Start it:** Actions → **formalmind swarm** → **Run workflow**. After that it runs every
