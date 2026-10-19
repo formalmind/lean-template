@@ -22,7 +22,7 @@ repository for you. To set it up yourself instead:
    | `maintainer` | your GitHub handle; the swarm tags you only when a decision is yours |
    | `team` | how many agents may work at once in audit mode |
    | `dailyUsd`, `monthlyUsd` | the budget; the swarm pauses when it is spent |
-   | `report` | the audit report's file; blank means `FM_AUDIT_<MM>_<YYYY>.md` |
+   | `report` | the audit report's file; blank means the one in `audit/` |
 
 3. **No secrets.** Install the [formalmind GitHub App](https://github.com/apps/formalmind) on the
    owner and set the project up at formal.team. Each run proves who it is with GitHub's OIDC
@@ -31,7 +31,7 @@ repository for you. To set it up yourself instead:
    daily budget.
 4. **Self-hosting instead?** Add your own `ANTHROPIC_API_KEY` (and `PROTOCOL_READ_TOKEN` for a
    private protocol) as Actions secrets; the runs then call Anthropic directly.
-5. **For an audit**, add the report file at the root, for example `FM_AUDIT_10_2026.md`
+5. **For an audit**, copy `.formal/templates/FM_AUDIT.md` to `audit/FM_AUDIT_<MM>_<YYYY>.md`
    (formal.team does this for you), and write what you already know in `.formal/plan.md`.
 6. **Start it:** Actions → **formalmind swarm** → **Run workflow**. After that it runs every
    ten minutes on its own, and hands the turn on straight away when there is more to do.
@@ -44,8 +44,7 @@ summary for you). The roles and their rules are in `.github/formalmind/`.
 
 - **specs:** Lean 4 definitions and theorems about your contracts, one reviewed PR at a time,
   each merged only on a clean `lake build` with no `sorry`. `FORMAL_MIND.md` is the changelog.
-- **audit:** every invariant either proved in Lean, filed as a finding with a Foundry POC
-  under `poc/` and a fix patch, or marked out of scope; all of it collected in the report,
+- **audit:** every invariant either proved in Lean, filed as a finding with a POC in the `poc/` Foundry project and a fix patch, or marked out of scope; all of it collected in the report,
   ready to submit.
 
 ## Building locally
