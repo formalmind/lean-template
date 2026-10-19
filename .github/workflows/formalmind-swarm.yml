@@ -304,7 +304,7 @@ jobs:
             review) allowed="$base,mcp__github_inline_comment__create_inline_comment,Bash(forge:*),Bash(cd:*)" ;;
             merge) allowed="$base,mcp__github_inline_comment__create_inline_comment,Bash(lake:*),Bash(forge:*),Edit,Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(gh pr merge:*)" ;;
             prove) allowed="$base,Edit,Bash(lake:*),$git_write" ;;
-            poc) allowed="$base,Edit,Bash(forge:*),Bash(cd:*),Bash(cp:*),Bash(patch:*),Bash(git apply:*),$git_write" ;;
+            poc) allowed="$base,Edit,Bash(forge:*),Bash(cd:*),Bash(cp:*),Bash(patch:*),Bash(git apply:*),Bash(git -C protocol:*),$git_write" ;;
           esac
           echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
       - uses: anthropics/claude-code-action@v1
